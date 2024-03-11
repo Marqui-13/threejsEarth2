@@ -1,10 +1,12 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import GUI from 'lil-gui'
+import Stats from "./Stats.js";
 import earthVertexShader from './shaders/earth/vertex.glsl'
 import earthFragmentShader from './shaders/earth/fragment.glsl'
 import atmosphereVertexShader from './shaders/atmosphere/vertex.glsl'
 import atmosphereFragmentShader from './shaders/atmosphere/fragment.glsl'
+
 
 /**
  * Base
@@ -17,6 +19,13 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
+
+// Statistics
+let stats = new Stats();
+stats.domElement.style.position = "absolute";
+stats.domElement.style.bottom = "0px";
+stats.domElement.style.zIndex = 100;
+document.body.appendChild(stats.domElement);
 
 // Loaders
 const textureLoader = new THREE.TextureLoader()
@@ -45,9 +54,74 @@ gui
     })
 
 // Textures
-const earthDayTexture = textureLoader.load('./earth/day.jpg')
-earthDayTexture.colorSpace = THREE.SRGBColorSpace
-earthDayTexture.anisotropy = 8
+var earthDayTexture = new THREE.TextureLoader();
+//= textureLoader.load('./earth/day.jpg', () => {
+//     document.getElementById('loader').style.display = 'none';
+// })
+
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const loaderElement = document.createElement('div');
+    loaderElement.id = 'loader';
+    loaderElement.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        z-index: 1000;
+        font-family: Arial, sans-serif;
+    `;
+    
+    const contentElement = document.createElement('div');
+    contentElement.innerHTML = `
+        <h2>Loading...</h2>
+        <p>Please wait while the Earth texture is loading...</p>
+        <div id="progress-bar" style="
+            width: 200px;
+            height: 20px;
+            background-color: #555;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+        ">
+            <div id="progress" style="
+                width: 0%;
+                height: 100%;
+                background-color: #4CAF50;
+                border-radius: 10px;
+            "></div>
+        </div>
+        <p id="progress-text" style="margin-top: 20px;">0%</p>
+    `;
+    
+    loaderElement.appendChild(contentElement);
+    document.body.appendChild(loaderElement);
+    
+    const updateProgress = (percentage) => {
+        const progressBar = document.getElementById('progress');
+        const progressText = document.getElementById('progress-text');
+        progressBar.style.width = `${percentage}%`;
+        progressText.innerText = `${percentage}%`;
+    };
+    
+    earthDayTexture = new THREE.TextureLoader().load('./earth/day.jpg', (texture) => {
+        document.getElementById('loader').style.display = 'none'; // Hide loader when texture is loaded
+    }, (xhr) => {
+        const percentage = (xhr.loaded / xhr.total) * 100;
+        updateProgress(percentage);
+    });
+    earthDayTexture.colorSpace = THREE.SRGBColorSpace
+    earthDayTexture.anisotropy = 8
+});
+
 
 const earthNightTexture = textureLoader.load('./earth/night.jpg')
 earthNightTexture.colorSpace = THREE.SRGBColorSpace
@@ -233,6 +307,9 @@ const tick = () =>
 
     // Update controls
     controls.update()
+
+    // Update Statistics
+    stats.update()
 
     // Render
     renderer.render(scene, camera)
